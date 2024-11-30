@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrar Rostro</title>
+</head>
+<body>
+    <h1>Registrar Rostro</h1>
+    <form method="POST" enctype="multipart/form-data">
+        <label for="name">Nombre:</label>
+        <input type="text" id="name" name="name" required><br><br>
+
+        <label for="role">Rol:</label>
+        <select id="role" name="role" required>
+            <option value="funcionario">Funcionario</option>
+            <option value="delincuente">Delincuente</option>
+        </select><br><br>
+
+        <label for="file">Subir Imagen:</label>
+        <input type="file" id="file" name="file" required><br><br>
+
+        <button type="submit">Registrar</button>
+    </form>
+
+    <a href="{{ url_for('verify') }}">Ir a Verificar Rostro</a>
+</body>
+</html>
