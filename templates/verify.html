@@ -19,6 +19,11 @@
         <p>{{ result }}</p>
     {% endif %}
 
+    {% if similarity_percentage is not none %}
+        <p>Certeza de que la persona es un {{ result.split()[3] }}: {{ similarity_percentage|round(2) }}%</p>
+    {% endif %}
+
+
     <a href="{{ url_for('index') }}">Ir a Registrar Rostro</a>
 </body>
 </html>
