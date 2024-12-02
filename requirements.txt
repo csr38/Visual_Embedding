@@ -3,3 +3,7 @@ tf-keras
 flask
 pymongo
 numpy
+pillow
+mtcnn
+scikit-learn
+python-dotenv
