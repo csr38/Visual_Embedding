@@ -197,6 +197,11 @@ main {
     border-color: #667eea;
 }
 
+#file-count {
+    color: white;
+    margin-top: 0.5rem;
+}
+
 .alert {
     padding: 1rem;
     border-radius: 0.25rem;
@@ -239,4 +244,17 @@ main {
     .card {
         padding: 2.5rem;
     }
+}
+select {
+    background-color: #4a5568; 
+    color: white;
+    border: 1px solid #4a5568;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+select option {
+    background-color: #4a5568;
+    color: white;
 }

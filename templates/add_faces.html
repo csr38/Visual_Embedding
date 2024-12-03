@@ -46,6 +46,7 @@
                             Elegir Archivos
                         </div>
                     </div>
+                    <p id="file-count">No se han seleccionado archivos</p> <!-- Añadido aquí -->
                 </div>
                 
                 <button type="submit" class="btn btn-submit">
@@ -55,5 +56,17 @@
             </form>
         </div>
     </main>
+
+    <script>
+        document.getElementById('images').addEventListener('change', function() {
+            var count = this.files.length;
+            var countText = count === 1 ? '1 archivo seleccionado' : count + ' archivos seleccionados';
+            document.getElementById('file-count').textContent = countText;
+        });
+
+        document.querySelector('.file-input-button').addEventListener('click', function() {
+            document.getElementById('images').click();
+        });
+    </script>
 </body>
 </html>
