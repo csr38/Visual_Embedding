@@ -16,42 +16,37 @@ client = MongoClient(MONGO_URI)
 db = client["visual"]
 people_collection = db["people"]
 
+# Inicializar MTCNN para detección de rostros
+detector = MTCNN()
+
 # Carpeta para almacenar videos
 VIDEO_FOLDER = "videos"
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
-# Inicializar MTCNN para la detección de rostros
-detector = MTCNN()
-
 # Función para detectar y extraer rostros en una imagen
 def extract_faces(frame):
-    if frame is None:
-        print("Frame es None")
-        return []
-
     faces = detector.detect_faces(frame)
     face_list = []
-
     for face in faces:
         x, y, w, h = face['box']
+        # Asegurar que las coordenadas sean positivas
+        x, y = max(0, x), max(0, y)
         face_roi = frame[y:y+h, x:x+w]
         face_resized = cv2.resize(face_roi, (160, 160))
         face_list.append((face_resized, (x, y, w, h)))
-
     return face_list
 
-# Verificación de personas con embeddings almacenados en MongoDB
+# Función para verificar personas en la base de datos usando embeddings
 def verify_person(face_embedding):
     people = people_collection.find()
     min_distance = float('inf')
     identified_person = None
-    threshold = 5.5  # Distancia umbral
+    threshold = 1.48  # Ajustar el umbral según la precisión deseada
 
     for person in people:
         for db_embedding in person["embeddings"]:
             db_embedding = np.array(db_embedding)
             distance = np.linalg.norm(face_embedding - db_embedding)
-
             if distance < min_distance:
                 min_distance = distance
                 identified_person = person
@@ -78,10 +73,9 @@ def gen_video():
                     break
 
                 frame_counter += 1
-                if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
+                if frame_counter % 7 != 0:
                     continue
 
-                # Reducir resolución para detección y transmisión
                 frame_resized = cv2.resize(frame, (640, 360))
                 faces = extract_faces(frame_resized)
 
@@ -90,7 +84,7 @@ def gen_video():
                         embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
                         name, role, distance = verify_person(np.array(embedding))
 
-                        # Etiquetar rostros
+                        # Etiquetar rostros en el cuadro de video
                         x, y, w, h = rect
                         color, label = (0, 255, 0), "Desconocido"
                         if role == "delincuente":
@@ -104,7 +98,6 @@ def gen_video():
                     except Exception as e:
                         print(f"Error al procesar el rostro: {str(e)}")
 
-                # Enviar cuadro procesado al cliente
                 ret, jpeg = cv2.imencode('.jpg', frame_resized)
                 if not ret:
                     continue
@@ -142,8 +135,7 @@ def add_faces():
 
             if faces:
                 for face, _ in faces:
-                    embedding = DeepFace.represent(face, model_name='ArcFace', enforce_detection=False)[0]['embedding']
-
+                    embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
                     person = people_collection.find_one({"name": name})
                     if person:
                         people_collection.update_one({"_id": person["_id"]}, {"$push": {"embeddings": embedding}})
