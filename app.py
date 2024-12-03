@@ -128,7 +128,7 @@ def gen_video():
                         if role == "delincuente":
                             color, label = (0, 0, 255), f"Delincuente: {name}"
                             # Enviar notificación con la imagen del rostro
-                            send_telegram_notification_with_image(f"Alerta: Delincuente detectado - Nombre: {name} (Distancia: {distance:.2f})", face_roi)
+                            send_telegram_notification_with_image(f"Alerta: Posible delincuente detectado", face_roi)
                         elif role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {name}"
 
