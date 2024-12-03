@@ -4,33 +4,56 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Agregar Rostros</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container mt-5">
+    <header>
         <h1>Agregar Rostros</h1>
-        {% with messages = get_flashed_messages() %}
-        {% if messages %}
-            <div class="alert alert-info mt-4">
-                {{ messages[0] }}
-            </div>
-        {% endif %}
-        {% endwith %}
-        <form method="POST" enctype="multipart/form-data">
-            <div class="mb-3">
-                <label for="name" class="form-label">Nombre</label>
-                <input type="text" class="form-control" id="name" name="name" required>
-            </div>
-            <div class="mb-3">
-                <label for="role" class="form-label">Rol (delincuente/trabajador)</label>
-                <input type="text" class="form-control" id="role" name="role" required>
-            </div>
-            <div class="mb-3">
-                <label for="images" class="form-label">Seleccionar Imágenes</label>
-                <input type="file" class="form-control" id="images" name="images" multiple required>
-            </div>
-            <button type="submit" class="btn btn-primary">Agregar</button>
-        </form>
-    </div>
+    </header>
+    
+    <main>
+        <div class="card">
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert">
+                    {{ messages[0] }}
+                </div>
+            {% endif %}
+            {% endwith %}
+            
+            <form method="POST" enctype="multipart/form-data" class="form">
+                <div class="form-group">
+                    <label for="name">Nombre</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="role">Rol</label>
+                    <select id="role" name="role" required>
+                        <option value="">Seleccionar rol</option>
+                        <option value="trabajador">Trabajador</option>
+                        <option value="delincuente">Delincuente</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="images">Seleccionar Imágenes</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="images" name="images" multiple required>
+                        <div class="file-input-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            Elegir Archivos
+                        </div>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-submit">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    Agregar
+                </button>
+            </form>
+        </div>
+    </main>
 </body>
 </html>
