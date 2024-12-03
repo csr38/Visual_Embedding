@@ -71,35 +71,41 @@ def gen_video():
                 print(f"No se pudo abrir el archivo de video: {video_file}")
                 continue
 
+            frame_counter = 0
             while cap.isOpened():
                 ret, frame = cap.read()
                 if not ret or frame is None:
                     break
 
-                faces = extract_faces(frame)
+                frame_counter += 1
+                if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
+                    continue
+
+                # Reducir resolución para detección y transmisión
+                frame_resized = cv2.resize(frame, (640, 360))
+                faces = extract_faces(frame_resized)
+
                 for face, rect in faces:
                     try:
                         embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
                         name, role, distance = verify_person(np.array(embedding))
 
-                        if role == "delincuente":
-                            color = (0, 0, 255)  # Rojo
-                            label = f"Delincuente: {name}"
-                        elif role == "trabajador":
-                            color = (0, 165, 255)  # Naranja
-                            label = f"Trabajador: {name}"
-                        else:
-                            color = (0, 255, 0)  # Verde
-                            label = f"Desconocido"
-
+                        # Etiquetar rostros
                         x, y, w, h = rect
-                        cv2.rectangle(frame, (x, y), (x + w, y + h), color, 2)
-                        cv2.putText(frame, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
+                        color, label = (0, 255, 0), "Desconocido"
+                        if role == "delincuente":
+                            color, label = (0, 0, 255), f"Delincuente: {name}"
+                        elif role == "trabajador":
+                            color, label = (0, 165, 255), f"Trabajador: {name}"
+
+                        cv2.rectangle(frame_resized, (x, y), (x + w, y + h), color, 2)
+                        cv2.putText(frame_resized, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
 
                     except Exception as e:
                         print(f"Error al procesar el rostro: {str(e)}")
 
-                ret, jpeg = cv2.imencode('.jpg', frame)
+                # Enviar cuadro procesado al cliente
+                ret, jpeg = cv2.imencode('.jpg', frame_resized)
                 if not ret:
                     continue
 
@@ -136,7 +142,7 @@ def add_faces():
 
             if faces:
                 for face, _ in faces:
-                    embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
+                    embedding = DeepFace.represent(face, model_name='ArcFace', enforce_detection=False)[0]['embedding']
 
                     person = people_collection.find_one({"name": name})
                     if person:
@@ -154,4 +160,4 @@ def add_faces():
 
 # Ejecutar la aplicación Flask
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000, threaded=True)
