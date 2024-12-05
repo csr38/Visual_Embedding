@@ -41,7 +41,7 @@ def verify_person(face_embedding):
     people = people_collection.find()
     min_distance = float('inf')
     identified_person = None
-    threshold = 1.48  # Ajustar el umbral según la precisión deseada
+    threshold = 3  # Ajustar el umbral según la precisión deseada
 
     for person in people:
         for db_embedding in person["embeddings"]:
