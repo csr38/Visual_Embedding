@@ -7,6 +7,7 @@ import os
 import numpy as np
 import requests
 import tempfile
+from datetime import datetime
 
 # Configuración de la aplicación Flask
 app = Flask(__name__)
@@ -31,16 +32,22 @@ BOT_TOKEN = "7385432946:AAEcusX5tZ3uH_D-1PN_KHg-RM9y4Pm9b64"
 CHAT_ID = "6536885057"
 
 # Función para enviar una imagen y un mensaje a Telegram
-def send_telegram_notification_with_image(message, image, role):
+def send_telegram_notification_with_image(message, image, role, features):
     try:
         # Guardar la imagen en un archivo temporal
         _, img_path = tempfile.mkstemp(suffix='.jpg')
         cv2.imwrite(img_path, image)
 
+        # Obtener la hora actual
+        current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
         if role == "pi":
             message = f"<b><font color='red'>{message}</font></b>"
         elif role == "trabajador":
             message = f"<b><font color='green'>{message}</font></b>"
+
+        # Incluir la descripción en el mensaje y la hora
+        message += f"\nDescripción: {features}\nHora: {current_time}"
         
         # Enviar mensaje con la imagen
         with open(img_path, 'rb') as img_file:
