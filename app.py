@@ -5,6 +5,8 @@ from mtcnn import MTCNN
 import cv2
 import os
 import numpy as np
+import requests
+import tempfile
 
 # Configuración de la aplicación Flask
 app = Flask(__name__)
@@ -23,17 +25,57 @@ detector = MTCNN()
 VIDEO_FOLDER = "videos"
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
+# Token Telegram
+BOT_TOKEN = "7385432946:AAEcusX5tZ3uH_D-1PN_KHg-RM9y4Pm9b64"
+# ID Telegram
+CHAT_ID = "6536885057"
+
+# Función para enviar una imagen y un mensaje a Telegram
+def send_telegram_notification_with_image(message, image, role):
+    try:
+        # Guardar la imagen en un archivo temporal
+        _, img_path = tempfile.mkstemp(suffix='.jpg')
+        cv2.imwrite(img_path, image)
+
+        if role == "pi":
+            message = f"<b><font color='red'>{message}</font></b>"
+        elif role == "trabajador":
+            message = f"<b><font color='green'>{message}</font></b>"
+        
+        # Enviar mensaje con la imagen
+        with open(img_path, 'rb') as img_file:
+            response = requests.post(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
+                data={"chat_id": CHAT_ID, "caption": message},
+                files={"photo": img_file}
+            )
+            
+        # Eliminar archivo temporal después de enviarlo
+        os.remove(img_path)
+        
+        if response.status_code != 200:
+            print(f"Error al enviar mensaje: {response.json()}")
+        else:
+            print(f"Mensaje enviado: {message}")
+    except Exception as e:
+        print(f"Error enviando notificación: {e}")
+
+
 # Función para detectar y extraer rostros en una imagen
 def extract_faces(frame):
+    if frame is None:
+        print("Frame es None")
+        return []
+
     faces = detector.detect_faces(frame)
     face_list = []
+
     for face in faces:
         x, y, w, h = face['box']
-        # Asegurar que las coordenadas sean positivas
-        x, y = max(0, x), max(0, y)
         face_roi = frame[y:y+h, x:x+w]
         face_resized = cv2.resize(face_roi, (160, 160))
-        face_list.append((face_resized, (x, y, w, h)))
+        face_list.append((face_resized, (x, y, w, h), face_roi))  # Agregar el rostro original (face_roi) a la lista
+
     return face_list
 
 # Función para verificar personas en la base de datos usando embeddings
@@ -73,24 +115,27 @@ def gen_video():
                     break
 
                 frame_counter += 1
-                if frame_counter % 7 != 0:
+                if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
                     continue
 
+                # Reducir resolución para detección y transmisión
                 frame_resized = cv2.resize(frame, (640, 360))
                 faces = extract_faces(frame_resized)
 
-                for face, rect in faces:
+                for face_resized, rect, face_roi in faces:
                     try:
-                        embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
-                        name, role, distance = verify_person(np.array(embedding))
+                        embedding = DeepFace.represent(face_resized, model_name='Facenet', enforce_detection=False)[0]['embedding']
+                        role, features, distance = verify_person(np.array(embedding))
 
-                        # Etiquetar rostros en el cuadro de video
+                        # Etiquetar rostros
                         x, y, w, h = rect
                         color, label = (0, 255, 0), "Desconocido"
-                        if role == "delincuente":
-                            color, label = (0, 0, 255), f"Delincuente: {name}"
+                        if role == "pi":
+                            color, label = (0, 0, 255), f"Persona de interes: {features}"
+                            # Enviar notificación con la imagen del rostro
+                            send_telegram_notification_with_image(f"Alerta: Posible persona de interes detectado", face_roi)
                         elif role == "trabajador":
-                            color, label = (0, 165, 255), f"Trabajador: {name}"
+                            color, label = (0, 165, 255), f"Trabajador: {features}"
 
                         cv2.rectangle(frame_resized, (x, y), (x + w, y + h), color, 2)
                         cv2.putText(frame_resized, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
@@ -98,6 +143,7 @@ def gen_video():
                     except Exception as e:
                         print(f"Error al procesar el rostro: {str(e)}")
 
+                # Enviar cuadro procesado al cliente
                 ret, jpeg = cv2.imencode('.jpg', frame_resized)
                 if not ret:
                     continue
@@ -122,8 +168,8 @@ def index():
 def add_faces():
     if request.method == "POST":
         files = request.files.getlist("images")
-        name = request.form["name"]
         role = request.form["role"]
+        features = request.form["features"]
 
         for file in files:
             image_path = os.path.join("static/uploads", file.filename)
@@ -136,13 +182,13 @@ def add_faces():
             if faces:
                 for face, _ in faces:
                     embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
-                    person = people_collection.find_one({"name": name})
+                    person = people_collection.find_one({"features": features})
                     if person:
                         people_collection.update_one({"_id": person["_id"]}, {"$push": {"embeddings": embedding}})
-                        flash(f"Nuevo embedding agregado para {name}.")
+                        flash(f"Nuevo embedding agregado para las características proporcionadas.")
                     else:
-                        people_collection.insert_one({"name": name, "role": role, "embeddings": [embedding]})
-                        flash(f"Rostro de {name} registrado correctamente.")
+                        people_collection.insert_one({"features": features, "role": role, "embeddings": [embedding]})
+                        flash(f"Rostro registrado correctamente con las características proporcionadas.")
             else:
                 flash("No se detectaron rostros en las imágenes.")
 

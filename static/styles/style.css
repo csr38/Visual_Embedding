@@ -7,21 +7,20 @@
 body {
     font-family: 'Roboto', Arial, sans-serif;
     min-height: 100vh;
-    background: linear-gradient(to bottom, #1a202c, #2d3748);
-    color: #343a40;
+    background: linear-gradient(to bottom, #f0f4f8, #d9e2ec);
+    color: #334e68;
     display: flex;
     flex-direction: column;
 }
 
 header {
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #4a5568;
+    background-color: #ffffff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     padding: 1.5rem 1rem;
 }
 
 h1 {
-    color: white;
+    color: #334e68;
     text-align: center;
     font-size: 1.5rem;
     margin-bottom: 0;
@@ -36,9 +35,8 @@ main {
 }
 
 .card {
-    background-color: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid #4a5568;
+    background-color: #ffffff;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
     border-radius: 0.5rem;
     padding: 2rem;
     width: 100%;
@@ -52,10 +50,10 @@ main {
     width: 100%;
     padding: 0.75rem;
     margin-bottom: 1rem;
-    border: 1px solid #e2e8f0;
+    border: 1px solid #bcccdc;
     border-radius: 0.25rem;
-    background-color: transparent;
-    color: white;
+    background-color: #f0f4f8;
+    color: #334e68;
     font-size: 1rem;
     text-decoration: none;
     cursor: pointer;
@@ -67,67 +65,16 @@ main {
 }
 
 .btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    text-decoration: none;
+    background-color: #d9e2ec;
+    border-color: #9fb3c8;
 }
 
 .icon {
     margin-right: 0.5rem;
+    width: 1.25rem;
+    height: 1.25rem;
 }
 
-@media (min-width: 640px) {
-    h1 {
-        font-size: 2rem;
-    }
-}
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: 'Roboto', Arial, sans-serif;
-    min-height: 100vh;
-    background: linear-gradient(to bottom, #1a202c, #2d3748);
-    color: #343a40;
-    display: flex;
-    flex-direction: column;
-}
-
-header {
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(10px);
-    border-bottom: 1px solid #4a5568;
-    padding: 1.5rem 1rem;
-}
-
-h1 {
-    color: white;
-    text-align: center;
-    font-size: 1.5rem;
-    margin-bottom: 0;
-}
-
-main {
-    flex-grow: 1;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 2rem 1rem;
-}
-
-.card {
-    background-color: rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(10px);
-    border: 1px solid #4a5568;
-    border-radius: 0.5rem;
-    padding: 2rem;
-    width: 100%;
-    max-width: 400px;
-}
-
-/* New styles for the form */
 .form {
     display: flex;
     flex-direction: column;
@@ -141,7 +88,7 @@ main {
 }
 
 .form-group label {
-    color: white;
+    color: #334e68;
     font-size: 0.875rem;
     font-weight: 500;
 }
@@ -149,10 +96,10 @@ main {
 .form-group input,
 .form-group select {
     padding: 0.75rem;
-    border: 1px solid #4a5568;
+    border: 1px solid #bcccdc;
     border-radius: 0.25rem;
-    background-color: rgba(255, 255, 255, 0.1);
-    color: white;
+    background-color: #ffffff;
+    color: #334e68;
     font-size: 1rem;
     transition: all 0.3s ease;
 }
@@ -160,8 +107,8 @@ main {
 .form-group input:focus,
 .form-group select:focus {
     outline: none;
-    border-color: #667eea;
-    background-color: rgba(255, 255, 255, 0.15);
+    border-color: #3182ce;
+    box-shadow: 0 0 0 3px rgba(49, 130, 206, 0.1);
 }
 
 .file-input-wrapper {
@@ -184,25 +131,30 @@ main {
     justify-content: center;
     gap: 0.5rem;
     padding: 0.75rem;
-    border: 1px dashed #4a5568;
+    border: 1px dashed #bcccdc;
     border-radius: 0.25rem;
-    background-color: rgba(255, 255, 255, 0.05);
-    color: white;
+    background-color: #f0f4f8;
+    color: #334e68;
     font-size: 1rem;
     transition: all 0.3s ease;
 }
 
 .file-input-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    border-color: #667eea;
+    background-color: #d9e2ec;
+    border-color: #9fb3c8;
+}
+
+#file-count {
+    color: #334e68;
+    margin-top: 0.5rem;
 }
 
 .alert {
     padding: 1rem;
     border-radius: 0.25rem;
-    background-color: rgba(66, 153, 225, 0.1);
+    background-color: #ebf8ff;
     border: 1px solid #4299e1;
-    color: white;
+    color: #2c5282;
     margin-bottom: 1.5rem;
 }
 
@@ -215,20 +167,29 @@ main {
     padding: 0.75rem;
     border: none;
     border-radius: 0.25rem;
-    background-color: #667eea;
-    color: white;
+    background-color: #3182ce;
+    color: #ffffff;
     font-size: 1rem;
     cursor: pointer;
     transition: all 0.3s ease;
 }
 
 .btn-submit:hover {
-    background-color: #5a67d8;
+    background-color: #2c5282;
 }
 
-.icon {
-    width: 1.25rem;
-    height: 1.25rem;
+select {
+    background-color: #ffffff;
+    color: #334e68;
+    border: 1px solid #bcccdc;
+    padding: 0.5rem;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+
+select option {
+    background-color: #ffffff;
+    color: #334e68;
 }
 
 @media (min-width: 640px) {
