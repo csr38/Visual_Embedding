@@ -90,7 +90,7 @@ def verify_person(face_embedding):
     people = people_collection.find()
     min_distance = float('inf')
     identified_person = None
-    threshold = 12
+    threshold = 19.1
 
     for person in people:
         for db_embedding in person.get("embeddings", []):
@@ -142,9 +142,10 @@ def gen_video():
                             color, label = (0, 100, 255), f"Persona de interes: {features} Distancia: {distance:.6f}"
                             # Enviar notificación con la imagen del rostro
                             send_telegram_notification_with_image(f"Alerta: Posible persona de interes detectado", face_roi, role, features)
-                            print(distance)
+                            print(distance, features)
                         elif role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {features}, Distancia: {distance:.6f}"
+                            print(distance, features)
 
                         cv2.rectangle(frame_resized, (x, y), (x + w, y + h), color, 2)
                         cv2.putText(frame_resized, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 2)
@@ -189,8 +190,9 @@ def add_faces():
             faces = extract_faces(img)
 
             if faces:
-                for face, _ in faces:
-                    embedding = DeepFace.represent(face, model_name='Facenet512', enforce_detection=False)[0]['embedding']
+                for face_resized, rect, face_roi in faces:
+                    embedding = DeepFace.represent(face_resized, model_name='Facenet512', enforce_detection=False)[0]['embedding']
+
                     person = people_collection.find_one({"features": features})
                     if person:
                         people_collection.update_one({"_id": person["_id"]}, {"$push": {"embeddings": embedding}})
