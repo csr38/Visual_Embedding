@@ -37,7 +37,7 @@ def send_telegram_notification_with_image(message, image, role):
         _, img_path = tempfile.mkstemp(suffix='.jpg')
         cv2.imwrite(img_path, image)
 
-        if role == "delincuente":
+        if role == "pi":
             message = f"<b><font color='red'>{message}</font></b>"
         elif role == "trabajador":
             message = f"<b><font color='green'>{message}</font></b>"
@@ -130,10 +130,10 @@ def gen_video():
                         # Etiquetar rostros
                         x, y, w, h = rect
                         color, label = (0, 255, 0), "Desconocido"
-                        if role == "delincuente":
-                            color, label = (0, 0, 255), f"Delincuente: {features}"
+                        if role == "pi":
+                            color, label = (0, 0, 255), f"Persona de interes: {features}"
                             # Enviar notificación con la imagen del rostro
-                            send_telegram_notification_with_image(f"Alerta: Posible delincuente detectado", face_roi)
+                            send_telegram_notification_with_image(f"Alerta: Posible persona de interes detectado", face_roi)
                         elif role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {features}"
 
