@@ -1,6 +1,3 @@
-import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '-1'  # Deshabilitar CUDA para TensorFlow
-
 from flask import Flask, render_template, request, redirect, url_for, flash, Response
 from pymongo import MongoClient
 from deepface import DeepFace
@@ -11,9 +8,6 @@ import numpy as np
 import requests
 import tempfile
 from datetime import datetime
-
-# Funciones y configuraciones del código se mantienen con los cambios mencionados
-
 
 # Configuración de la aplicación Flask
 app = Flask(__name__)
@@ -32,53 +26,66 @@ detector = MTCNN()
 VIDEO_FOLDER = "videos"
 os.makedirs(VIDEO_FOLDER, exist_ok=True)
 
-# Token y chat de Telegram
+# Token Telegram
 BOT_TOKEN = "7385432946:AAEcusX5tZ3uH_D-1PN_KHg-RM9y4Pm9b64"
+# ID Telegram
 CHAT_ID = "6536885057"
 
-
-# Función para enviar una imagen y mensaje a Telegram
+# Función para enviar una imagen y un mensaje a Telegram
 def send_telegram_notification_with_image(message, image, role, features):
     try:
-        # Guardar imagen en archivo temporal
-        _, img_path = tempfile.mkstemp(suffix=".jpg")
+        # Guardar la imagen en un archivo temporal
+        _, img_path = tempfile.mkstemp(suffix='.jpg')
         cv2.imwrite(img_path, image)
 
-        # Formatear mensaje en Markdown (aceptado por Telegram)
+        # Obtener la hora actual
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        message = f"*{message}*\nDescripción: {features}\nHora: {current_time}"
 
-        with open(img_path, "rb") as img_file:
+        if role == "pi":
+            message = f"<b><font color='red'>{message}</font></b>"
+        elif role == "trabajador":
+            message = f"<b><font color='green'>{message}</font></b>"
+
+        # Incluir la descripción en el mensaje y la hora
+        message += f"\nDescripción: {features}\nHora: {current_time}"
+        
+        # Enviar mensaje con la imagen
+        with open(img_path, 'rb') as img_file:
             response = requests.post(
                 f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
-                data={"chat_id": CHAT_ID, "caption": message, "parse_mode": "Markdown"},
-                files={"photo": img_file},
+                data={"chat_id": CHAT_ID, "caption": message},
+                files={"photo": img_file}
             )
-        os.remove(img_path)  # Limpiar archivo temporal
-
+            
+        # Eliminar archivo temporal después de enviarlo
+        os.remove(img_path)
+        
         if response.status_code != 200:
             print(f"Error al enviar mensaje: {response.json()}")
-
+        else:
+            print(f"Mensaje enviado: {message}")
     except Exception as e:
         print(f"Error enviando notificación: {e}")
 
 
-# Función para extraer rostros de un frame
+# Función para detectar y extraer rostros en una imagen
 def extract_faces(frame):
+    if frame is None:
+        print("Frame es None")
+        return []
+
     faces = detector.detect_faces(frame)
     face_list = []
 
     for face in faces:
         x, y, w, h = face['box']
-        if x >= 0 and y >= 0 and w > 0 and h > 0:
-            face_roi = frame[y:y + h, x:x + w]
-            face_resized = cv2.resize(face_roi, (160, 160))
-            face_list.append((face_resized, (x, y, w, h), face_roi))
+        face_roi = frame[y:y+h, x:x+w]
+        face_resized = cv2.resize(face_roi, (160, 160))
+        face_list.append((face_resized, (x, y, w, h), face_roi))  # Agregar el rostro original (face_roi) a la lista
 
     return face_list
 
-
-# Función para verificar el rostro en la base de datos
+# Función para verificar personas en la base de datos usando embeddings
 def verify_person(face_embedding):
     people = people_collection.find()
     min_distance = float('inf')
@@ -98,25 +105,28 @@ def verify_person(face_embedding):
 
     return None, None, None
 
-
-# Generador de video
+# Generador de video en vivo con detección de rostros
 def gen_video():
     video_files = [os.path.join(VIDEO_FOLDER, f) for f in os.listdir(VIDEO_FOLDER) if f.endswith(('.mp4', '.avi'))]
 
     while True:
         for video_file in video_files:
             cap = cv2.VideoCapture(video_file)
-            frame_counter = 0
+            if not cap.isOpened():
+                print(f"No se pudo abrir el archivo de video: {video_file}")
+                continue
 
+            frame_counter = 0
             while cap.isOpened():
                 ret, frame = cap.read()
-                if not ret:
+                if not ret or frame is None:
                     break
 
                 frame_counter += 1
-                if frame_counter % 7 != 0:  # Procesar cada 7 frames
+                if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
                     continue
 
+                # Reducir resolución para detección y transmisión
                 frame_resized = cv2.resize(frame, (640, 360))
                 faces = extract_faces(frame_resized)
 
@@ -124,7 +134,7 @@ def gen_video():
                     try:
                         embedding = DeepFace.represent(face_resized, model_name='Facenet512', enforce_detection=False)[0]['embedding']
                         role, features, distance = verify_person(np.array(embedding))
-
+                        # Etiquetar rostros
                         x, y, w, h = rect
                         color, label = (0, 255, 0), "Desconocido"
             
@@ -132,6 +142,7 @@ def gen_video():
                             color, label = (0, 100, 255), f"Persona de interes: {features} Distancia: {distance:.6f}"
                             # Enviar notificación con la imagen del rostro
                             send_telegram_notification_with_image(f"Alerta: Posible persona de interes detectado", face_roi, role, features)
+                            print(distance)
                         elif role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {features}, Distancia: {distance:.6f}"
 
