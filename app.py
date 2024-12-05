@@ -31,11 +31,16 @@ BOT_TOKEN = "7385432946:AAEcusX5tZ3uH_D-1PN_KHg-RM9y4Pm9b64"
 CHAT_ID = "6536885057"
 
 # Función para enviar una imagen y un mensaje a Telegram
-def send_telegram_notification_with_image(message, image):
+def send_telegram_notification_with_image(message, image, role):
     try:
         # Guardar la imagen en un archivo temporal
         _, img_path = tempfile.mkstemp(suffix='.jpg')
         cv2.imwrite(img_path, image)
+
+        if role == "delincuente":
+            message = f"<b><font color='red'>{message}</font></b>"
+        elif role == "trabajador":
+            message = f"<b><font color='green'>{message}</font></b>"
         
         # Enviar mensaje con la imagen
         with open(img_path, 'rb') as img_file:
@@ -120,17 +125,17 @@ def gen_video():
                 for face_resized, rect, face_roi in faces:
                     try:
                         embedding = DeepFace.represent(face_resized, model_name='Facenet', enforce_detection=False)[0]['embedding']
-                        name, role, distance = verify_person(np.array(embedding))
+                        role, features, distance = verify_person(np.array(embedding))
 
                         # Etiquetar rostros
                         x, y, w, h = rect
                         color, label = (0, 255, 0), "Desconocido"
                         if role == "delincuente":
-                            color, label = (0, 0, 255), f"Delincuente: {name}"
+                            color, label = (0, 0, 255), f"Delincuente: {features}"
                             # Enviar notificación con la imagen del rostro
                             send_telegram_notification_with_image(f"Alerta: Posible delincuente detectado", face_roi)
                         elif role == "trabajador":
-                            color, label = (0, 165, 255), f"Trabajador: {name}"
+                            color, label = (0, 165, 255), f"Trabajador: {features}"
 
                         cv2.rectangle(frame_resized, (x, y), (x + w, y + h), color, 2)
                         cv2.putText(frame_resized, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, color, 2)
@@ -163,8 +168,8 @@ def index():
 def add_faces():
     if request.method == "POST":
         files = request.files.getlist("images")
-        name = request.form["name"]
         role = request.form["role"]
+        features = request.form["features"]
 
         for file in files:
             image_path = os.path.join("static/uploads", file.filename)
@@ -177,13 +182,13 @@ def add_faces():
             if faces:
                 for face, _ in faces:
                     embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
-                    person = people_collection.find_one({"name": name})
+                    person = people_collection.find_one({"features": features})
                     if person:
                         people_collection.update_one({"_id": person["_id"]}, {"$push": {"embeddings": embedding}})
-                        flash(f"Nuevo embedding agregado para {name}.")
+                        flash(f"Nuevo embedding agregado para las características proporcionadas.")
                     else:
-                        people_collection.insert_one({"name": name, "role": role, "embeddings": [embedding]})
-                        flash(f"Rostro de {name} registrado correctamente.")
+                        people_collection.insert_one({"features": features, "role": role, "embeddings": [embedding]})
+                        flash(f"Rostro registrado correctamente con las características proporcionadas.")
             else:
                 flash("No se detectaron rostros en las imágenes.")
 
