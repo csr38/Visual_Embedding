@@ -83,7 +83,7 @@ def verify_person(face_embedding):
     people = people_collection.find()
     min_distance = float('inf')
     identified_person = None
-    threshold = 3  # Ajustar el umbral según la precisión deseada
+    threshold = 4  # Ajustar el umbral según la precisión deseada
 
     for person in people:
         for db_embedding in person["embeddings"]:
@@ -124,7 +124,7 @@ def gen_video():
 
                 for face_resized, rect, face_roi in faces:
                     try:
-                        embedding = DeepFace.represent(face_resized, model_name='Facenet', enforce_detection=False)[0]['embedding']
+                        embedding = DeepFace.represent(face_resized, model_name='Facenet512', enforce_detection=False)[0]['embedding']
                         role, features, distance = verify_person(np.array(embedding))
 
                         # Etiquetar rostros
@@ -181,7 +181,7 @@ def add_faces():
 
             if faces:
                 for face, _ in faces:
-                    embedding = DeepFace.represent(face, model_name='Facenet', enforce_detection=False)[0]['embedding']
+                    embedding = DeepFace.represent(face, model_name='Facenet512', enforce_detection=False)[0]['embedding']
                     person = people_collection.find_one({"features": features})
                     if person:
                         people_collection.update_one({"_id": person["_id"]}, {"$push": {"embeddings": embedding}})
