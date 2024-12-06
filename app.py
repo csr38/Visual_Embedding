@@ -216,7 +216,12 @@ def gen_video():
                         embedding = DeepFace.represent(np.array(face_resized), model_name='Facenet512', enforce_detection=False)[0]['embedding']
                         role, features, distance = verify_person(np.array(embedding))
 
+                        # Etiquetar rostros
+                        x, y, w, h = rect
+                        color, label = (0, 255, 0), "Desconocido"
+
                         if role == "pi":
+                            color, label = (255, 0, 0), f"Persona de interes: {features} Distancia: {distance:.6f}"
                             # Actualizar la mejor imagen si la distancia es menor
                             if distance < best_pi_distance:
                                 best_pi_image = face_roi
@@ -238,9 +243,7 @@ def gen_video():
                                 best_pi_image = None
                                 best_pi_distance = float('inf')
 
-                        # Etiquetar rostros
-                        x, y, w, h = rect
-                        color, label = (0, 255, 0), "Desconocido"
+
 
                         if role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {features}, Distancia: {distance:.6f}"
