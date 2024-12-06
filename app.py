@@ -33,20 +33,29 @@ BOT_TOKEN = "7385432946:AAEcusX5tZ3uH_D-1PN_KHg-RM9y4Pm9b64"
 # ID Telegram
 CHAT_ID = "6536885057"
 
+# Variable global para controlar las detecciones
+pi_detection_count = 0
+best_pi_image = None
+best_pi_distance = float('inf')
+
 # Función para enviar una imagen y un mensaje a Telegram
 def send_telegram_notification_with_image(message, image, role, features):
     try:
+        # Escalar la imagen para que sea más grande
+        image = image.resize((image.width * 3, image.height * 3), resample=Image.LANCZOS)
+
         # Guardar la imagen en un archivo temporal
-        _, img_path = tempfile.mkstemp(suffix='.jpg')
-        image.save(img_path)
+        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
+            img_path = temp_file.name
+            image.save(img_path)
 
         # Obtener la hora actual
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         if role == "pi":
-            message = f"<b><font color='red'>{message}</font></b>"
+            message = f"🔴<b>{message}</b>"
         elif role == "trabajador":
-            message = f"<b><font color='green'>{message}</font></b>"
+            message = f"🟢<b>{message}</b>"
 
         # Incluir la descripción en el mensaje y la hora
         message += f"\nDescripción: {features}\nHora: {current_time}"
@@ -58,9 +67,6 @@ def send_telegram_notification_with_image(message, image, role, features):
                 data={"chat_id": CHAT_ID, "caption": message, "parse_mode": "HTML"},
                 files={"photo": img_file}
             )
-            
-        # Eliminar archivo temporal después de enviarlo
-        os.remove(img_path)
         
         if response.status_code != 200:
             print(f"Error al enviar mensaje: {response.json()}")
@@ -68,6 +74,14 @@ def send_telegram_notification_with_image(message, image, role, features):
             print(f"Mensaje enviado: {message}")
     except Exception as e:
         print(f"Error enviando notificación: {e}")
+    finally:
+        # Asegurarse de eliminar el archivo temporal
+        if os.path.exists(img_path):
+            try:
+                os.remove(img_path)
+            except Exception as e:
+                print(f"Error al eliminar archivo temporal: {e}")
+
 
 # Función para detectar y extraer rostros en una imagen
 def extract_faces(frame):
@@ -107,7 +121,70 @@ def verify_person(face_embedding):
     return None, None, None
 
 # Generador de video en vivo con detección de rostros
+# def gen_video():
+#     video_files = [os.path.join(VIDEO_FOLDER, f) for f in os.listdir(VIDEO_FOLDER) if f.endswith(('.mp4', '.avi'))]
+
+#     while True:
+#         for video_file in video_files:
+#             cap = cv2.VideoCapture(video_file)
+#             if not cap.isOpened():
+#                 print(f"No se pudo abrir el archivo de video: {video_file}")
+#                 continue
+
+#             frame_counter = 0
+#             while cap.isOpened():
+#                 ret, frame = cap.read()
+#                 if not ret or frame is None:
+#                     break
+
+#                 frame_counter += 1
+#                 if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
+#                     continue
+
+#                 # Convertir el frame a una imagen PIL
+#                 frame_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
+#                 # Reducir resolución para detección y transmisión
+#                 frame_resized = frame_pil.resize((640, 360))
+#                 faces = extract_faces(frame_resized)
+
+#                 for face_resized, rect, face_roi in faces:
+#                     try:
+#                         embedding = DeepFace.represent(np.array(face_resized), model_name='Facenet512', enforce_detection=False)[0]['embedding']
+#                         role, features, distance = verify_person(np.array(embedding))
+#                         # Etiquetar rostros
+#                         x, y, w, h = rect
+#                         color, label = (0, 255, 0), "Desconocido"
+            
+#                         if role == "pi":
+#                             color, label = (0, 100, 255), f"Persona de interes: {features} Distancia: {distance:.6f}"
+#                             # Enviar notificación con la imagen del rostro
+#                             send_telegram_notification_with_image(f"Alerta: Posible persona de interés detectado. Requiere confirmación visual.", face_roi, role, features)
+#                             print(distance, features)
+#                         elif role == "trabajador":
+#                             color, label = (0, 165, 255), f"Trabajador: {features}, Distancia: {distance:.6f}"
+
+#                         draw = ImageDraw.Draw(frame_resized)
+#                         draw.rectangle([x, y, x + w, y + h], outline=color, width=2)
+#                         draw.text((x, y - 10), label, fill=color)
+
+#                     except Exception as e:
+#                         print(f"Error al procesar el rostro: {str(e)}")
+
+#                 # Convertir la imagen PIL de vuelta a un array numpy
+#                 frame_resized_np = np.array(frame_resized)
+
+#                 # Enviar cuadro procesado al cliente
+#                 ret, jpeg = cv2.imencode('.jpg', cv2.cvtColor(frame_resized_np, cv2.COLOR_RGB2BGR))
+#                 if not ret:
+#                     continue
+
+#                 yield (b'--frame\r\n'
+#                        b'Content-Type: image/jpeg\r\n\r\n' + jpeg.tobytes() + b'\r\n\r\n')
+
+#             cap.release()
 def gen_video():
+    global pi_detection_count, best_pi_image, best_pi_distance
     video_files = [os.path.join(VIDEO_FOLDER, f) for f in os.listdir(VIDEO_FOLDER) if f.endswith(('.mp4', '.avi'))]
 
     while True:
@@ -124,7 +201,7 @@ def gen_video():
                     break
 
                 frame_counter += 1
-                if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
+                if frame_counter % 7 != 0:  # Procesar cada 7 cuadros
                     continue
 
                 # Convertir el frame a una imagen PIL
@@ -138,16 +215,34 @@ def gen_video():
                     try:
                         embedding = DeepFace.represent(np.array(face_resized), model_name='Facenet512', enforce_detection=False)[0]['embedding']
                         role, features, distance = verify_person(np.array(embedding))
+
+                        if role == "pi":
+                            # Actualizar la mejor imagen si la distancia es menor
+                            if distance < best_pi_distance:
+                                best_pi_image = face_roi
+                                best_pi_distance = distance
+
+                            pi_detection_count += 1
+                            if pi_detection_count == 3:
+                                # Enviar la mejor imagen detectada al llegar a la tercera detección
+                                send_telegram_notification_with_image(
+                                    f"Alerta: Persona de interés detectada. Verifique visualmente.",
+                                    best_pi_image,
+                                    role,
+                                    features
+                                )
+                                print(f"Imagen enviada con distancia: {best_pi_distance}, características: {features}")
+
+                                # Reiniciar el contador para evitar múltiples envíos
+                                pi_detection_count = 0
+                                best_pi_image = None
+                                best_pi_distance = float('inf')
+
                         # Etiquetar rostros
                         x, y, w, h = rect
                         color, label = (0, 255, 0), "Desconocido"
-            
-                        if role == "pi":
-                            color, label = (0, 100, 255), f"Persona de interes: {features} Distancia: {distance:.6f}"
-                            # Enviar notificación con la imagen del rostro
-                            send_telegram_notification_with_image(f"Alerta: Posible persona de interes detectado", face_roi, role, features)
-                            print(distance, features)
-                        elif role == "trabajador":
+
+                        if role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {features}, Distancia: {distance:.6f}"
 
                         draw = ImageDraw.Draw(frame_resized)
