@@ -2,3 +2,6 @@
 .venv/
 env/
 venv/
+
+# Ignorar la carpeta uploads dentro de static
+static/uploads/

@@ -8,6 +8,8 @@ import numpy as np
 import requests
 import tempfile
 from datetime import datetime
+from PIL import Image, ImageDraw
+import io
 
 # Configuración de la aplicación Flask
 app = Flask(__name__)
@@ -36,7 +38,7 @@ def send_telegram_notification_with_image(message, image, role, features):
     try:
         # Guardar la imagen en un archivo temporal
         _, img_path = tempfile.mkstemp(suffix='.jpg')
-        cv2.imwrite(img_path, image)
+        image.save(img_path)
 
         # Obtener la hora actual
         current_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -53,7 +55,7 @@ def send_telegram_notification_with_image(message, image, role, features):
         with open(img_path, 'rb') as img_file:
             response = requests.post(
                 f"https://api.telegram.org/bot{BOT_TOKEN}/sendPhoto",
-                data={"chat_id": CHAT_ID, "caption": message},
+                data={"chat_id": CHAT_ID, "caption": message, "parse_mode": "HTML"},
                 files={"photo": img_file}
             )
             
@@ -67,20 +69,19 @@ def send_telegram_notification_with_image(message, image, role, features):
     except Exception as e:
         print(f"Error enviando notificación: {e}")
 
-
 # Función para detectar y extraer rostros en una imagen
 def extract_faces(frame):
     if frame is None:
         print("Frame es None")
         return []
 
-    faces = detector.detect_faces(frame)
+    faces = detector.detect_faces(np.array(frame))
     face_list = []
 
     for face in faces:
         x, y, w, h = face['box']
-        face_roi = frame[y:y+h, x:x+w]
-        face_resized = cv2.resize(face_roi, (160, 160))
+        face_roi = frame.crop((x, y, x + w, y + h))
+        face_resized = face_roi.resize((160, 160))
         face_list.append((face_resized, (x, y, w, h), face_roi))  # Agregar el rostro original (face_roi) a la lista
 
     return face_list
@@ -126,13 +127,16 @@ def gen_video():
                 if frame_counter % 7 != 0:  # Procesar cada 5 cuadros
                     continue
 
+                # Convertir el frame a una imagen PIL
+                frame_pil = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+
                 # Reducir resolución para detección y transmisión
-                frame_resized = cv2.resize(frame, (640, 360))
+                frame_resized = frame_pil.resize((640, 360))
                 faces = extract_faces(frame_resized)
 
                 for face_resized, rect, face_roi in faces:
                     try:
-                        embedding = DeepFace.represent(face_resized, model_name='Facenet512', enforce_detection=False)[0]['embedding']
+                        embedding = DeepFace.represent(np.array(face_resized), model_name='Facenet512', enforce_detection=False)[0]['embedding']
                         role, features, distance = verify_person(np.array(embedding))
                         # Etiquetar rostros
                         x, y, w, h = rect
@@ -145,16 +149,19 @@ def gen_video():
                             print(distance, features)
                         elif role == "trabajador":
                             color, label = (0, 165, 255), f"Trabajador: {features}, Distancia: {distance:.6f}"
-                            print(distance, features)
 
-                        cv2.rectangle(frame_resized, (x, y), (x + w, y + h), color, 2)
-                        cv2.putText(frame_resized, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, color, 2)
+                        draw = ImageDraw.Draw(frame_resized)
+                        draw.rectangle([x, y, x + w, y + h], outline=color, width=2)
+                        draw.text((x, y - 10), label, fill=color)
 
                     except Exception as e:
                         print(f"Error al procesar el rostro: {str(e)}")
 
+                # Convertir la imagen PIL de vuelta a un array numpy
+                frame_resized_np = np.array(frame_resized)
+
                 # Enviar cuadro procesado al cliente
-                ret, jpeg = cv2.imencode('.jpg', frame_resized)
+                ret, jpeg = cv2.imencode('.jpg', cv2.cvtColor(frame_resized_np, cv2.COLOR_RGB2BGR))
                 if not ret:
                     continue
 
@@ -186,12 +193,12 @@ def add_faces():
             os.makedirs(os.path.dirname(image_path), exist_ok=True)
             file.save(image_path)
 
-            img = cv2.imread(image_path)
+            img = Image.open(image_path)
             faces = extract_faces(img)
 
             if faces:
                 for face_resized, rect, face_roi in faces:
-                    embedding = DeepFace.represent(face_resized, model_name='Facenet512', enforce_detection=False)[0]['embedding']
+                    embedding = DeepFace.represent(np.array(face_resized), model_name='Facenet512', enforce_detection=False)[0]['embedding']
 
                     person = people_collection.find_one({"features": features})
                     if person:
